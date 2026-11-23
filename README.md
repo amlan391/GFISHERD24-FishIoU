@@ -1,6 +1,6 @@
 # FishIoU for Ultralytics BoT-SORT
 
-This repository integrates **FishIoU-based data association** into BoT-SORT in **Ultralytics YOLO v8.4.175** for underwater fish tracking.
+This repository integrates FishIoU-based data association into BoT-SORT in Ultralytics YOLO v8.4.175 for underwater fish tracking.
 
 The FishIoU implementation is adapted from [IMM-Byte-FishIoU](https://github.com/iffatebu/IMM-Byte-FishIoU_based_Tracker) and integrated into BoT-SORT as an optional alternative to standard IoU-based association.
 
