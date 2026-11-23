@@ -195,9 +195,15 @@ class BOTSORT(BYTETracker):
         return [BOTrack(xywh, s, c) for (xywh, s, c) in zip(bboxes, results.conf, results.cls)]
 
     def get_dists(self, tracks: list[BOTrack], detections: list[BOTrack]) -> np.ndarray:
-        """Calculate distances between tracks and detections using IoU and optionally ReID embeddings."""
-        dists = matching.iou_distance(tracks, detections)
-        dists_mask = dists > (1 - self.proximity_thresh)
+        """Calculate distances between tracks and detections using IoU or FishIoU and optionally ReID embeddings."""
+        iou_dists = matching.iou_distance(tracks, detections)
+        dists_mask = iou_dists > (1 - self.proximity_thresh)
+
+        # fishiou:
+        if getattr(self.args, "use_fishiou", False):
+            dists = matching.fish_iou_distance(tracks, detections)
+        else:
+            dists = iou_dists.copy()
 
         if self.args.fuse_score:
             dists = matching.fuse_score(dists, detections)

@@ -98,6 +98,139 @@ def iou_distance(atracks: list, btracks: list) -> np.ndarray:
     return 1 - ious  # cost matrix
 
 
+# fishiou:
+def fish_iou_single(b1, b2):
+    """
+    FishIoU between two boxes
+    b1, b2: [x1, y1, x2, y2] format
+
+    Returns FishIoU score (higher = better match)
+    """
+    inter_x1 = max(b1[0], b2[0])
+    inter_y1 = max(b1[1], b2[1])
+    inter_x2 = min(b1[2], b2[2])
+    inter_y2 = min(b1[3], b2[3])
+
+    inter_w = max(0, inter_x2 - inter_x1)
+    inter_h = max(0, inter_y2 - inter_y1)
+    inter_area = inter_w * inter_h
+
+    w1 = max(0.0, b1[2] - b1[0])
+    h1 = max(0.0, b1[3] - b1[1])
+    w2 = max(0.0, b2[2] - b2[0])
+    h2 = max(0.0, b2[3] - b2[1])
+
+    if w1 <= 0 or h1 <= 0 or w2 <= 0 or h2 <= 0:
+        return 0.0
+
+    area1 = w1 * h1
+    area2 = w2 * h2
+    union_area = area1 + area2 - inter_area
+
+    iou = inter_area / union_area \
+          if union_area > 0 else 0.0
+
+    cx1 = (b1[0] + b1[2]) / 2
+    cy1 = (b1[1] + b1[3]) / 2
+    cx2 = (b2[0] + b2[2]) / 2
+    cy2 = (b2[1] + b2[3]) / 2
+
+    enclose_x1 = min(b1[0], b2[0])
+    enclose_y1 = min(b1[1], b2[1])
+    enclose_x2 = max(b1[2], b2[2])
+    enclose_y2 = max(b1[3], b2[3])
+    d_diag_sq = ((enclose_x2 - enclose_x1)**2 +
+                 (enclose_y2 - enclose_y1)**2)
+
+    dc = ((cx1-cx2)**2 + (cy1-cy2)**2) / \
+         (d_diag_sq + 1e-7)
+
+    min_area = min(area1, area2)
+    s = 1 - np.exp(-min_area / 1000.0)
+
+    alpha, beta, gamma = 0.15, 0.30, 0.25
+
+
+    c1 = [b1[0] + alpha*w1,
+          b1[1] + beta*h1,
+          b1[2] - gamma*w1,
+          b1[3] - beta*h1]
+
+    c2 = [b2[0] + alpha*w2,
+          b2[1] + beta*h2,
+          b2[2] - gamma*w2,
+          b2[3] - beta*h2]
+
+    ci_x1 = max(c1[0], c2[0])
+    ci_y1 = max(c1[1], c2[1])
+    ci_x2 = min(c1[2], c2[2])
+    ci_y2 = min(c1[3], c2[3])
+
+    ci_w = max(0, ci_x2 - ci_x1)
+    ci_h = max(0, ci_y2 - ci_y1)
+    ci_area = ci_w * ci_h
+
+    ca1 = max(0, (c1[2]-c1[0])) * \
+              max(0, (c1[3]-c1[1]))
+    ca2 = max(0, (c2[2]-c2[0])) * \
+              max(0, (c2[3]-c2[1]))
+    cu = ca1 + ca2 - ci_area
+
+    ciou = ci_area / cu if cu > 0 else 0.0
+
+    r1 = w1 / (h1 + 1e-7)
+    r2 = w2 / (h2 + 1e-7)
+    ar = min(r1, r2) / (max(r1, r2) + 1e-7)
+
+    aa = min(area1, area2) / \
+         (max(area1, area2) + 1e-7)
+
+    fish_iou = (1 * iou +
+                0.2 * ar +
+                0.2 * aa -
+                0.6 * s * dc)
+    fish_iou = np.clip(fish_iou, 0.0, 1.0)
+    return float(fish_iou)
+
+
+# fishiou:
+def fish_iou_batch(atlbrs, btlbrs):
+    """
+    Compute FishIoU for all pairs
+    atlbrs: list of [x1,y1,x2,y2] (tracks)
+    btlbrs: list of [x1,y1,x2,y2] (detections)
+    Returns: (N, M) matrix of FishIoU scores
+    """
+    n = len(atlbrs)
+    m = len(btlbrs)
+
+    if n == 0 or m == 0:
+        return np.zeros((n, m))
+
+    result = np.zeros((n, m))
+    for i, b1 in enumerate(atlbrs):
+        for j, b2 in enumerate(btlbrs):
+            result[i, j] = fish_iou_single(b1, b2)
+
+    return result
+
+
+# fishiou:
+def fish_iou_distance(atracks: list, btracks: list) -> np.ndarray:
+    """Compute FishIoU cost for modern Ultralytics axis-aligned track boxes."""
+    if (len(atracks) > 0 and isinstance(atracks[0], np.ndarray)) or (
+        len(btracks) > 0 and isinstance(btracks[0], np.ndarray)
+    ):
+        atlbrs = atracks
+        btlbrs = btracks
+    else:
+        atlbrs = [track.xyxy for track in atracks]
+        btlbrs = [track.xyxy for track in btracks]
+
+    fish_ious = fish_iou_batch(atlbrs, btlbrs)
+    return 1 - fish_ious
+
+
 def embedding_distance(tracks: list, detections: list) -> np.ndarray:
     """Compute cosine distance between tracks and detections based on embeddings.
 
