@@ -445,17 +445,10 @@ class BYTETracker:
         if r_tracked_stracks and detections_second:
             # IoU-only by design (ByteTrack paper sec. 3.2): fusing low scores pushes costs above the 0.5 threshold
             # fishiou:
-            if (
-                getattr(self.args, "tracker_type", None) == "botsort"
-                and getattr(self.args, "use_fishiou", False)
-            ):
-                dists = matching.fish_iou_distance(
-                    r_tracked_stracks, detections_second
-                )
+            if getattr(self.args, "tracker_type", None) == "botsort" and getattr(self.args, "use_fishiou", False):
+                dists = matching.fish_iou_distance(r_tracked_stracks, detections_second)
             else:
-                dists = matching.iou_distance(
-                    r_tracked_stracks, detections_second
-                )
+                dists = matching.iou_distance(r_tracked_stracks, detections_second)
             matches, u_track, _ = matching.linear_assignment(dists, thresh=0.5)
             self._apply_matches(matches, r_tracked_stracks, detections_second, activated, refind)
         else:
