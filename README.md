@@ -6,7 +6,7 @@ The FishIoU implementation is adapted from [IMM-Byte-FishIoU](https://github.com
 
 The repository also includes scripts for training YOLO26-L detectors and evaluating single- and multi-class fish tracking on the GFISHERD24 dataset.
 
-## Pipeline
+## Workflow
 
 The workflow consists of:
 
